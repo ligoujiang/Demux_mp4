@@ -8,7 +8,7 @@ using namespace std;
 //demux mp4 ->aac+h264
 class Demux{
 private:
-    //输入输出参数1
+    //输入输出参数
     char* m_inFileName=nullptr;
     char* m_outFileName_H264=nullptr;
     char* m_outFileName_Aac=nullptr;
