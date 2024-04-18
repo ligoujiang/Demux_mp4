@@ -6,7 +6,12 @@ extern "C"{
 
 using namespace std;
 
+/*
+主流格式解封装 plv mp4...---->aac+h264
+ts格式的音频不需要写入adts头数据
+*/
 
+//音频采样率列表
 const int sampling_frequencies[] = {
     96000,  // 0x0
     88200,  // 0x1
@@ -76,8 +81,6 @@ int adts_header(char * const p_adts_header, const int data_length,
     return 0;
 }
 
-
-//demux ->aac+h264
 class Demux{
 private:
     //输入输出参数1
@@ -177,14 +180,26 @@ public:
         //主流封装格式转换成h264_mp4toannexb
         const AVBitStreamFilter *bsfilter = av_bsf_get_by_name("h264_mp4toannexb");
         //初始化过滤器上下文
-        av_bsf_alloc(bsfilter, &m_bsfCtx); //AVBSFContext;
+        ret=av_bsf_alloc(bsfilter, &m_bsfCtx); //AVBSFContext;
+        if(ret<0){
+            av_log(NULL,AV_LOG_ERROR,"av_bsf_alloc failed!\n");
+            return false;
+        }
         //添加解码器属性
-        avcodec_parameters_copy(m_bsfCtx->par_in, m_inFmtCtx->streams[videoIndex]->codecpar);
-        av_bsf_init(m_bsfCtx);
+        ret=avcodec_parameters_copy(m_bsfCtx->par_in, m_inFmtCtx->streams[videoIndex]->codecpar);
+        if(ret<0){
+            av_log(NULL,AV_LOG_ERROR,"avcodec_parameters_copy failed!\n");
+            return false;
+        }
+        ret=av_bsf_init(m_bsfCtx);
+        if(ret<0){
+            av_log(NULL,AV_LOG_ERROR,"av_bsf_init failed!\n");
+            return false;
+        }
 
         //发包
         m_pkt=av_packet_alloc();
-        while(true){
+        while(1){
             ret=av_read_frame(m_inFmtCtx,m_pkt);
             if(ret<0){
                 av_log(NULL,AV_LOG_ERROR,"av_read_frame fnish!\n");
@@ -197,6 +212,7 @@ public:
                 //处理视频
                 ret=av_bsf_send_packet(m_bsfCtx,m_pkt);
                 if(ret<0){
+                    av_packet_unref(m_pkt);
                     continue;
                 }
                 while(true){
@@ -209,18 +225,18 @@ public:
                 }
                 //-----------------------------------------
             }else if(m_pkt->stream_index==audioIndex){
-                //处理音频              
-                    char adtsHeader[7]={0};
-                    adts_header(adtsHeader,m_pkt->size,
-                                m_inFmtCtx->streams[audioIndex]->codecpar->profile,
-                                m_inFmtCtx->streams[audioIndex]->codecpar->sample_rate,
-                                m_inFmtCtx->streams[audioIndex]->codecpar->ch_layout.nb_channels);
-                    //先写头数据
-                    //注意！！ ts格式不需要写头数据，自带有，写ts格式时，注释下面这行代码即可！
-                    fwrite(adtsHeader,1,sizeof(adtsHeader),m_fp_aac);
-                    //写音频数据
-                    fwrite(m_pkt->data,1,m_pkt->size,m_fp_aac);
-                    av_packet_unref(m_pkt);
+                //处理音频
+                char adtsHeader[7]={0};
+                adts_header(adtsHeader,m_pkt->size,
+                            m_inFmtCtx->streams[audioIndex]->codecpar->profile,
+                            m_inFmtCtx->streams[audioIndex]->codecpar->sample_rate,
+                            m_inFmtCtx->streams[audioIndex]->codecpar->ch_layout.nb_channels);
+                //先写头数据
+                //注意！！ ts格式不需要写头数据，自带有，写ts格式时，注释下面这行代码即可！
+                fwrite(adtsHeader,1,sizeof(adtsHeader),m_fp_aac);
+                //写音频数据
+                fwrite(m_pkt->data,1,m_pkt->size,m_fp_aac);
+                av_packet_unref(m_pkt);
             }
             av_packet_unref(m_pkt);
         }
@@ -229,10 +245,10 @@ public:
 };
 
 
-int main(int argc,char** argv)
-{
-    Demux de(argv[1],argv[2],argv[3]);
-    de.DemuxMP4();
+// int main(int argc,char** argv)
+// {
+//     Demux de(argv[1],argv[2],argv[3]);
+//     de.DemuxMP4();
 
-    return 0;
-}
+//     return 0;
+// }
