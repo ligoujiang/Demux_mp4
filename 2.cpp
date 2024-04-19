@@ -159,7 +159,9 @@ public:
             av_log(NULL,AV_LOG_ERROR,"open out_fp failed!\n");
             return false;
         }
-        
+
+        // 计算出每一帧的数据,像素格式 * 宽 * 高
+        int frame_bytes = av_image_get_buffer_size(frame->format, frame->width,frame->height, 1);
         
     }
         
