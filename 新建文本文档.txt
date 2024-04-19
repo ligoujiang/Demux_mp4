@@ -1,0 +1,21 @@
+//缓存一帧数据的大小
+uint8_t *yuv_buf = (uint8_t *)malloc(frame_bytes);
+
+//初始化yuv_buf数组为0
+memset(yuv_buf, 0, frame_bytes);
+//读取infile文件，每次读取的大小为一帧数据的大小，返回值为读取的数据大小
+size_t read_bytes = fread(yuv_buf, 1, frame_bytes, infile);
+            if(read_bytes <= 0) {	//当读取的数据小于等于0，说明没有数据可读
+            	printf("read file finish\n");
+            	break;
+             }
+
+//将yuv_buf缓存区数据填充到frame的data和linesize，根据指定的参数 format，width，height 1，来填充，返回值为填充数据的大小
+int need_size = av_image_fill_arrays(frame->data, frame->linesize, yuv_buf,
+                                              frame->format,
+                                              frame->width, frame->height, 1);
+if(need_size != frame_bytes) {
+            printf("av_image_fill_arrays failed, need_size:%d, frame_bytes:%d\n",
+                   need_size, frame_bytes);
+                   break;
+         }
