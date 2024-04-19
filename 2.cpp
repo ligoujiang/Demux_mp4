@@ -66,6 +66,7 @@ public:
     }
     bool encodecVideo(){
         //指定编码器
+        encodecName="AV_CODEC_ID_H264";
         const AVCodec* encodec=avcodec_find_encoder_by_name(encodecName);
         if(encodec==NULL){
             av_log(NULL,AV_LOG_ERROR,"avcodec_find_encoder_by_name failed!\n");
@@ -77,22 +78,25 @@ public:
             av_log(NULL,AV_LOG_ERROR,"avcodec_alloc_context3 failed!\n");
             return false;
         }
+        //给编码器句柄设置参数
+        //必设参数
+        encodecCtx->width=outWidth;  //设置宽
+        encodecCtx->height=outHeight;    //设置高
+        encodecCtx->time_base=(AVRational){1,fps}; //时间基
+
         //获取源视频色彩格式（根据原视频格式指定）
         enum AVPixelFormat pixFmt=AV_PIX_FMT_YUV420P;
         //指定帧率
         int fps=25;
-        //给编码器句柄设置参数
-        encodecCtx->codec_type=AVMEDIA_TYPE_VIDEO;
-        encodecCtx->pix_fmt=pixFmt; //色彩格式
-        encodecCtx->width=outWidth;  //设置宽
-        encodecCtx->height=outHeight;    //设置高
-        encodecCtx->time_base=(AVRational){1,fps};
+        encodecCtx->codec_type=AVMEDIA_TYPE_VIDEO; //编解码类型
+        encodecCtx->pix_fmt=pixFmt; //视频色彩格式
         encodecCtx->framerate=(AVRational){fps,1};
         encodecCtx->bit_rate=48000; //编码率
         encodecCtx->max_b_frames=0; //b帧数量
         encodecCtx->gop_size=25;   // I帧间隔
 
-        if (encodec->id == AV_CODEC_ID_H264) {
+        //附加：当解码器为AV_CODEC_ID_H264，设置H264编解码器的一些参数
+        if (encodec->id == AV_CODEC_ID_H264) {    
             // 相关的参数可以参考libx264.c的 AVOption options
             // ultrafast all encode time:2270ms
             // medium all encode time:5815ms
@@ -105,11 +109,43 @@ public:
             if(ret != 0) {
                 printf("av_opt_set profile failed\n");
             }
-            //ret = av_opt_set(codec_ctx->priv_data, "tune","zerolatency",0); // 直播是才使用该设置
+            //ret = av_opt_set(codec_ctx->priv_data, "tune","zerolatency",0); // 直播时才使用该设置
             ret = av_opt_set(codec_ctx->priv_data, "tune","film",0); //  画质film
             if(ret != 0) {
                 printf("av_opt_set tune failed\n");
             }
+        }
+        
+        //初始化编解码句柄
+        ret=avcodec_open2(encodecCtx,encodec,NULL);
+        if(ret<0){
+            av_log(NULL,AV_LOG_ERROR,"avcodec_open2 failed!\n");
+            return false;
+        }
+        pkt=av_packet_alloc();
+        if(pkt==nullptr){
+            av_log(NULL,AV_LOG_ERROR,"av_packet_alloc failed!\n");
+            return false;
+        }
+        frame=av_frame_alloc();
+        if(frame==nullptr){
+            av_log(NULL,AV_LOG_ERROR,"av_frame_alloc failed!\n");
+            return false;
+        }
+
+        //frame必设参数
+        frame->width=codecCtx->width;
+        frame->height=codecCtx->height;
+        frame->format=codecCtx->pix_fmt;
+
+        //设置该参数将导致视频全是I帧，忽略gop_size
+        //frame->pict_type=AV_PICTURE_TYPE_I;
+
+        //申请视频帧数据空间
+        ret=av_frame_get_buffer(frame,0);
+        if(ret){
+            av_log(NULL,AV_LOG_ERROR,"av_frame_get_buffer failed!\n");
+            return false;
         }
     }
 };
