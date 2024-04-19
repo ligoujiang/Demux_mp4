@@ -141,7 +141,7 @@ public:
         //设置该参数将导致视频全是I帧，忽略gop_size
         //frame->pict_type=AV_PICTURE_TYPE_I;
 
-        //申请视频帧数据空间
+        //申请视频帧数据空间,分配buff
         ret=av_frame_get_buffer(frame,0);
         if(ret){
             av_log(NULL,AV_LOG_ERROR,"av_frame_get_buffer failed!\n");
