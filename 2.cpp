@@ -147,7 +147,22 @@ public:
             av_log(NULL,AV_LOG_ERROR,"av_frame_get_buffer failed!\n");
             return false;
         }
+        //以读取的方式打开输入文件
+        in_fp=foen(inFileName,"rb");
+        if(in_fp==nullptr){
+            av_log(NULL,AV_LOG_ERROR,"open in_fp failed!\n");
+            return false;
+        }
+        //以写入的方式打开输出文件
+        out_fp=foen(outFileName,"wb");
+        if(out_fp==nullptr){
+            av_log(NULL,AV_LOG_ERROR,"open out_fp failed!\n");
+            return false;
+        }
+        
+        
     }
+        
 };
 
 
