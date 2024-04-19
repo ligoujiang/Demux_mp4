@@ -91,7 +91,7 @@ public:
         encodecCtx->codec_type=AVMEDIA_TYPE_VIDEO; //编解码类型
         encodecCtx->pix_fmt=pixFmt; //视频色彩格式
         encodecCtx->framerate=(AVRational){fps,1};
-        encodecCtx->bit_rate=48000; //编码率
+        //encodecCtx->bit_rate=48000; //编码率
         encodecCtx->max_b_frames=0; //b帧数量
         encodecCtx->gop_size=25;   // I帧间隔
 
